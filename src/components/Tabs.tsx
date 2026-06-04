@@ -1,4 +1,4 @@
-export type TabKey = 'comparison' | 'calendar';
+export type TabKey = 'comparison' | 'calendar' | 'planner';
 
 interface TabsProps {
   activeTab: TabKey;
@@ -8,6 +8,7 @@ interface TabsProps {
 const tabs: Array<{ key: TabKey; label: string }> = [
   { key: 'comparison', label: 'Comparación' },
   { key: 'calendar', label: 'Ver calendario' },
+  { key: 'planner', label: 'Planner' },
 ];
 
 export function Tabs({ activeTab, onTabChange }: TabsProps) {

@@ -6,6 +6,7 @@ import { ErrorAlert } from './components/ErrorAlert';
 import { FileUploadCard } from './components/FileUploadCard';
 import { FiltersPanel } from './components/FiltersPanel';
 import { Header } from './components/Header';
+import { PlannerView } from './components/PlannerView';
 import { SummaryBar } from './components/SummaryBar';
 import { Tabs, type TabKey } from './components/Tabs';
 import { useExcelComparison } from './hooks/useExcelComparison';
@@ -48,6 +49,7 @@ function App() {
             error={comparison.previous.error}
             isReady={Boolean(comparison.previous.parsedSheet)}
             onFileSelected={(file) => void comparison.loadFile('previous', file)}
+            onClearFile={() => comparison.clearFile('previous')}
           />
           <FileUploadCard
             label="Semana actual"
@@ -56,6 +58,7 @@ function App() {
             error={comparison.current.error}
             isReady={Boolean(comparison.current.parsedSheet)}
             onFileSelected={(file) => void comparison.loadFile('current', file)}
+            onClearFile={() => comparison.clearFile('current')}
           />
         </section>
 
@@ -76,7 +79,11 @@ function App() {
           </div>
         )}
 
-        {comparison.isReady ? (
+        <Tabs activeTab={activeTab} onTabChange={setActiveTab} />
+
+        {activeTab === 'planner' ? (
+          <PlannerView rows={comparison.isReady ? comparison.comparedRows : []} />
+        ) : comparison.isReady ? (
           <>
             <FiltersPanel
               filters={filters}
@@ -85,8 +92,6 @@ function App() {
               onFiltersChange={setFilters}
               onClearFilters={() => setFilters(initialFilters)}
             />
-
-            <Tabs activeTab={activeTab} onTabChange={setActiveTab} />
 
             {activeTab === 'comparison' ? (
               <section className="results-panel">
@@ -104,7 +109,7 @@ function App() {
         ) : (
           <EmptyState
             title="Carga dos exportaciones de Planner"
-            description="Cuando ambos archivos sean válidos, se activarán los filtros, la comparación y el calendario."
+            description="Cuando ambos archivos sean válidos, se activarán los filtros, la comparación y el calendario. La vista Planner muestra datos de ejemplo mientras tanto."
           />
         )}
       </main>

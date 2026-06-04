@@ -7,6 +7,7 @@ interface FileUploadCardProps {
   error: string | null;
   isReady: boolean;
   onFileSelected: (file: File) => void;
+  onClearFile: () => void;
 }
 
 function getFirstFile(fileList: FileList | null): File | null {
@@ -20,6 +21,7 @@ export function FileUploadCard({
   error,
   isReady,
   onFileSelected,
+  onClearFile,
 }: FileUploadCardProps) {
   const inputId = useId();
   const [isDragging, setIsDragging] = useState(false);
@@ -44,9 +46,14 @@ export function FileUploadCard({
         handleFile(getFirstFile(event.dataTransfer.files));
       }}
     >
-      <div>
-        <h2>{label}</h2>
-        <p>{helperText}</p>
+      <div className="upload-card-header">
+        <span className="upload-file-icon" aria-hidden="true">
+          XLSX
+        </span>
+        <div>
+          <h2>{label}</h2>
+          <p>{helperText}</p>
+        </div>
       </div>
 
       <div className="upload-dropzone">
@@ -57,12 +64,25 @@ export function FileUploadCard({
           onChange={(event) => handleFile(getFirstFile(event.currentTarget.files))}
         />
         <label htmlFor={inputId}>
-          <span className="upload-action">{fileName ? 'Sustituir archivo' : 'Seleccionar archivo'}</span>
-          <span className="upload-hint">o arrastra aquí un archivo .xlsx</span>
+          <span className="upload-action">Explorar en tu dispositivo</span>
+          <span className="upload-hint">Selecciona o arrastra un archivo Excel .xlsx</span>
         </label>
       </div>
 
-      {fileName && <p className="file-name">{fileName}</p>}
+      {fileName && (
+        <div className="selected-file-row">
+          <span className="selected-file-icon" aria-hidden="true">
+            XL
+          </span>
+          <span className="selected-file-info">
+            <strong>{fileName}</strong>
+            <span>{isReady ? 'Excel validado' : 'Excel seleccionado'}</span>
+          </span>
+          <button type="button" onClick={onClearFile}>
+            Quitar
+          </button>
+        </div>
+      )}
       {error && <p className="upload-error">{error}</p>}
       {isReady && !error && <p className="upload-ready">Archivo validado</p>}
     </section>

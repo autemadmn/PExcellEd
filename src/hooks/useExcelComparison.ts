@@ -18,6 +18,7 @@ interface UseExcelComparisonResult {
   isProcessing: boolean;
   isReady: boolean;
   loadFile: (slot: UploadSlot, file: File) => Promise<void>;
+  clearFile: (slot: UploadSlot) => void;
   loadDemoData: () => void;
 }
 
@@ -72,6 +73,11 @@ export function useExcelComparison(): UseExcelComparisonResult {
     }
   };
 
+  const clearFile = (slot: UploadSlot): void => {
+    const setState = slot === 'previous' ? setPrevious : setCurrent;
+    setState(initialUploadState);
+  };
+
   const loadDemoData = (): void => {
     const demo = createMockSheets();
     setPrevious({
@@ -93,6 +99,7 @@ export function useExcelComparison(): UseExcelComparisonResult {
     isProcessing,
     isReady: Boolean(previous.parsedSheet && current.parsedSheet),
     loadFile,
+    clearFile,
     loadDemoData,
   };
 }

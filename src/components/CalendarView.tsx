@@ -5,7 +5,8 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { EventClickArg, EventContentArg, EventInput } from '@fullcalendar/core';
 import type { ComparedRow } from '../types/comparison';
-import { addDays } from '../utils/dateUtils';
+import { formatDateForSpain } from '../utils/dateUtils';
+import { getDueDate, inferRowHierarchy, isStructuralRow } from '../utils/plannerData';
 import { EmptyState } from './EmptyState';
 import { EventDetailModal } from './EventDetailModal';
 
@@ -25,38 +26,21 @@ function eventColorForRow(row: ComparedRow): { backgroundColor: string; borderCo
   return { backgroundColor: '#244A70', borderColor: '#173452', textColor: '#FFFFFF' };
 }
 
-function eventDatesForRow(row: ComparedRow): Pick<EventInput, 'start' | 'end'> | null {
-  const { startDate, endDate } = row.currentRow;
-
-  if (startDate && endDate) {
-    return {
-      start: startDate,
-      end: startDate === endDate ? undefined : addDays(endDate, 1),
-    };
-  }
-
-  if (startDate) {
-    return { start: startDate };
-  }
-
-  if (endDate) {
-    return { start: endDate };
-  }
-
-  return null;
-}
-
 export function CalendarView({ rows }: CalendarViewProps) {
   const [selectedRow, setSelectedRow] = useState<ComparedRow | null>(null);
+  const [selectedProject, setSelectedProject] = useState<string | undefined>();
+  const [selectedDueDate, setSelectedDueDate] = useState<string | null | undefined>();
+  const rowContexts = useMemo(() => inferRowHierarchy(rows), [rows]);
 
   const events = useMemo<EventInput[]>(() => {
     return rows.flatMap((row, index) => {
-      const dates = eventDatesForRow(row);
-      if (!dates) {
+      const dueDate = getDueDate(row);
+      if (!dueDate || isStructuralRow(row)) {
         return [];
       }
 
       const colors = eventColorForRow(row);
+      const context = rowContexts.get(row);
       const taskName = row.currentRow.taskName.trim() || 'Sin nombre';
       const assignee = row.currentRow.assignee.trim() || 'Sin asignar';
 
@@ -65,13 +49,19 @@ export function CalendarView({ rows }: CalendarViewProps) {
           id: String(index),
           title: taskName,
           allDay: true,
-          extendedProps: { row, assignee },
-          ...dates,
+          start: dueDate,
+          extendedProps: { row, assignee, project: context?.project, dueDate },
           ...colors,
         },
       ];
     });
-  }, [rows]);
+  }, [rowContexts, rows]);
+  const initialDate = useMemo(() => {
+    return events
+      .map((event) => (typeof event.start === 'string' ? event.start : null))
+      .filter((date): date is string => Boolean(date))
+      .sort()[0];
+  }, [events]);
 
   if (events.length === 0) {
     return (
@@ -85,6 +75,17 @@ export function CalendarView({ rows }: CalendarViewProps) {
   const handleEventClick = (eventClick: EventClickArg): void => {
     const row = eventClick.event.extendedProps.row as ComparedRow | undefined;
     if (row) {
+      const project =
+        typeof eventClick.event.extendedProps.project === 'string'
+          ? eventClick.event.extendedProps.project
+          : undefined;
+      const dueDate =
+        typeof eventClick.event.extendedProps.dueDate === 'string'
+          ? eventClick.event.extendedProps.dueDate
+          : null;
+
+      setSelectedProject(project);
+      setSelectedDueDate(dueDate);
       setSelectedRow(row);
     }
   };
@@ -108,10 +109,11 @@ export function CalendarView({ rows }: CalendarViewProps) {
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="dayGridMonth"
+        initialDate={initialDate}
         headerToolbar={{
           left: 'prev,next today',
           center: 'title',
-          right: 'dayGridMonth,timeGridWeek',
+          right: '',
         }}
         buttonText={{
           today: 'Hoy',
@@ -121,11 +123,28 @@ export function CalendarView({ rows }: CalendarViewProps) {
         locale="es"
         firstDay={1}
         height="auto"
+        fixedWeekCount={false}
+        dayMaxEvents={3}
+        moreLinkText={(count) => `+${count} más`}
         events={events}
         eventContent={renderEventContent}
         eventClick={handleEventClick}
+        eventDidMount={(info) => {
+          const dueDate =
+            typeof info.event.extendedProps.dueDate === 'string'
+              ? formatDateForSpain(info.event.extendedProps.dueDate)
+              : '';
+          info.el.setAttribute('title', `${info.event.title}${dueDate ? ` - Vence ${dueDate}` : ''}`);
+        }}
       />
-      {selectedRow && <EventDetailModal row={selectedRow} onClose={() => setSelectedRow(null)} />}
+      {selectedRow && (
+        <EventDetailModal
+          row={selectedRow}
+          project={selectedProject}
+          dueDate={selectedDueDate}
+          onClose={() => setSelectedRow(null)}
+        />
+      )}
     </section>
   );
 }

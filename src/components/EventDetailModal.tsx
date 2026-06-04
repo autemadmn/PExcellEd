@@ -4,6 +4,8 @@ import { StatusBadge } from './StatusBadge';
 
 interface EventDetailModalProps {
   row: ComparedRow;
+  project?: string;
+  dueDate?: string | null;
   onClose: () => void;
 }
 
@@ -11,7 +13,7 @@ function readableDate(value: string | null): string {
   return formatDateForSpain(value) || 'Sin fecha';
 }
 
-export function EventDetailModal({ row, onClose }: EventDetailModalProps) {
+export function EventDetailModal({ row, project, dueDate, onClose }: EventDetailModalProps) {
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
       <section
@@ -32,10 +34,22 @@ export function EventDetailModal({ row, onClose }: EventDetailModalProps) {
         </header>
 
         <dl className="detail-grid">
+          {project && (
+            <div>
+              <dt>Proyecto</dt>
+              <dd>{project}</dd>
+            </div>
+          )}
           <div>
             <dt>Responsable</dt>
             <dd>{row.currentRow.assignee || 'Sin asignar'}</dd>
           </div>
+          {dueDate !== undefined && (
+            <div>
+              <dt>Vencimiento</dt>
+              <dd>{readableDate(dueDate)}</dd>
+            </div>
+          )}
           <div>
             <dt>Inicio actual</dt>
             <dd>{readableDate(row.currentRow.startDate)}</dd>
