@@ -7,6 +7,21 @@
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module">
+      const isGitHubPages =
+        window.location.hostname.endsWith('github.io') ||
+        window.location.pathname.startsWith('/PExcellEd/');
+
+      if (isGitHubPages) {
+        const stylesheet = document.createElement('link');
+        stylesheet.rel = 'stylesheet';
+        stylesheet.href = '/PExcellEd/assets/app.css';
+        document.head.appendChild(stylesheet);
+        const appModule = '/PExcellEd/assets/' + 'app.js';
+        await import(/* @vite-ignore */ appModule);
+      } else {
+        await import('/src/main.tsx');
+      }
+    </script>
   </body>
 </html>
