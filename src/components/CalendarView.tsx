@@ -3,7 +3,7 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import type { EventClickArg, EventInput } from '@fullcalendar/core';
+import type { EventClickArg, EventContentArg, EventInput } from '@fullcalendar/core';
 import type { ComparedRow } from '../types/comparison';
 import { addDays } from '../utils/dateUtils';
 import { EmptyState } from './EmptyState';
@@ -15,14 +15,14 @@ interface CalendarViewProps {
 
 function eventColorForRow(row: ComparedRow): { backgroundColor: string; borderColor: string; textColor: string } {
   if (row.changedFields.length > 0) {
-    return { backgroundColor: '#2E9B5F', borderColor: '#17663B', textColor: '#FFFFFF' };
+    return { backgroundColor: '#D97706', borderColor: '#B45309', textColor: '#FFFFFF' };
   }
 
   if (row.status === 'unmatched') {
     return { backgroundColor: '#EEF3F8', borderColor: '#9CADBF', textColor: '#10263F' };
   }
 
-  return { backgroundColor: '#10263F', borderColor: '#173452', textColor: '#FFFFFF' };
+  return { backgroundColor: '#244A70', borderColor: '#173452', textColor: '#FFFFFF' };
 }
 
 function eventDatesForRow(row: ComparedRow): Pick<EventInput, 'start' | 'end'> | null {
@@ -57,14 +57,15 @@ export function CalendarView({ rows }: CalendarViewProps) {
       }
 
       const colors = eventColorForRow(row);
-      const onlyEndDate = !row.currentRow.startDate && Boolean(row.currentRow.endDate);
+      const taskName = row.currentRow.taskName.trim() || 'Sin nombre';
+      const assignee = row.currentRow.assignee.trim() || 'Sin asignar';
 
       return [
         {
           id: String(index),
-          title: `${onlyEndDate ? 'Fin: ' : ''}${row.currentRow.taskName.trim() || 'Sin nombre'}`,
+          title: taskName,
           allDay: true,
-          extendedProps: { row },
+          extendedProps: { row, assignee },
           ...dates,
           ...colors,
         },
@@ -88,6 +89,20 @@ export function CalendarView({ rows }: CalendarViewProps) {
     }
   };
 
+  const renderEventContent = (eventInfo: EventContentArg) => {
+    const assignee =
+      typeof eventInfo.event.extendedProps.assignee === 'string'
+        ? eventInfo.event.extendedProps.assignee
+        : 'Sin asignar';
+
+    return (
+      <div className="calendar-event-content">
+        <span className="calendar-event-title">{eventInfo.event.title}</span>
+        <span className="calendar-event-assignee">Asignado a: {assignee}</span>
+      </div>
+    );
+  };
+
   return (
     <section className="calendar-panel">
       <FullCalendar
@@ -107,6 +122,7 @@ export function CalendarView({ rows }: CalendarViewProps) {
         firstDay={1}
         height="auto"
         events={events}
+        eventContent={renderEventContent}
         eventClick={handleEventClick}
       />
       {selectedRow && <EventDetailModal row={selectedRow} onClose={() => setSelectedRow(null)} />}

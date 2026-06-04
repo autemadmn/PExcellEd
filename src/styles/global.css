@@ -523,8 +523,34 @@ main .secondary-button:hover:not(:disabled) {
 
 .fc .fc-event {
   border-radius: 4px;
-  padding: 1px 3px;
+  padding: 3px 5px;
   font-weight: 700;
+}
+
+.calendar-event-content {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.calendar-event-title,
+.calendar-event-assignee {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-event-title {
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.calendar-event-assignee {
+  font-size: 0.68rem;
+  font-weight: 600;
+  opacity: 0.88;
 }
 
 .modal-backdrop {
