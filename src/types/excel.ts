@@ -44,6 +44,7 @@ export interface ParsedRow {
 export interface ParsedPlannerSheet {
   fileName: string;
   sheetName: string;
+  projectName: string;
   columns: DetectedColumns;
   rows: ParsedRow[];
 }

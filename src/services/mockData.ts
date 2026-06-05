@@ -225,12 +225,14 @@ export function createMockSheets(): { previous: ParsedPlannerSheet; current: Par
     previous: {
       fileName: 'planner-semana-anterior-demo.xlsx',
       sheetName: 'Planificación',
+      projectName: 'Proyecto Alpha',
       columns: headers,
       rows: previousRows,
     },
     current: {
       fileName: 'planner-semana-actual-demo.xlsx',
       sheetName: 'Planificación',
+      projectName: 'Proyecto Alpha',
       columns: headers,
       rows: currentRows,
     },

@@ -10,7 +10,7 @@ type Worksheet = ExcelJS.Worksheet;
 type Row = ExcelJS.Row;
 type Cell = ExcelJS.Cell;
 
-function cellDisplayText(cell: Cell): string {
+export function cellDisplayText(cell: Cell): string {
   const value = cell.value;
 
   if (value instanceof Date) {
@@ -129,6 +129,7 @@ export function parsePlannerWorksheet(worksheet: Worksheet, fileName: string): P
   const headers = collectHeaders(worksheet.getRow(HEADER_ROW_NUMBER));
   const columns = detectColumns(headers);
   const rows: ParsedRow[] = [];
+  const projectName = cellDisplayText(worksheet.getCell('B1')).trim();
 
   for (let rowIndex = FIRST_DATA_ROW; rowIndex <= worksheet.rowCount; rowIndex += 1) {
     const parsedRow = parseDataRow(worksheet.getRow(rowIndex), columns);
@@ -140,6 +141,7 @@ export function parsePlannerWorksheet(worksheet: Worksheet, fileName: string): P
   return {
     fileName,
     sheetName: worksheet.name,
+    projectName,
     columns,
     rows,
   };
