@@ -6,6 +6,7 @@ import {
 } from '../services/masterExcel';
 import type { ComparedRow } from '../types/comparison';
 import type { MasterChangeCandidate, MasterChangeStatus, ParsedMasterWorkbook } from '../types/master';
+import { assigneeTextMatches, splitAssignees } from '../utils/assignees';
 import { formatDateForSpain } from '../utils/dateUtils';
 import { normalizeText } from '../utils/normalizeText';
 import { getDueDate, getInitials, inferRowHierarchy } from '../utils/plannerData';
@@ -16,6 +17,7 @@ interface GridViewProps {
   masterWorkbook: ParsedMasterWorkbook | null;
   plannerProjectName: string;
   plannerFileName: string | null;
+  onMasterUpdated?: () => void;
 }
 
 type GridStatusFilter = 'all' | 'ready' | 'changed' | 'blocked' | 'no_change';
@@ -169,7 +171,13 @@ function matchesStatusFilter(candidate: MasterChangeCandidate, filter: GridStatu
   return candidate.status === 'no_change';
 }
 
-export function GridView({ rows, masterWorkbook, plannerProjectName, plannerFileName }: GridViewProps) {
+export function GridView({
+  rows,
+  masterWorkbook,
+  plannerProjectName,
+  plannerFileName,
+  onMasterUpdated,
+}: GridViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [projectFilter, setProjectFilter] = useState('all');
   const [assigneeFilter, setAssigneeFilter] = useState('all');
@@ -204,16 +212,21 @@ export function GridView({ rows, masterWorkbook, plannerProjectName, plannerFile
   );
   const assignees = useMemo(
     () =>
-      Array.from(new Set(items.map((item) => item.assignee))).sort((left, right) =>
-        left.localeCompare(right, 'es'),
-      ),
+      Array.from(
+        new Map(
+          items.flatMap((item) =>
+            splitAssignees(item.assignee).map((person) => [person.normalized, person.label] as const),
+          ),
+        ).values(),
+      ).sort((left, right) => left.localeCompare(right, 'es')),
     [items],
   );
   const normalizedSearch = normalizeText(searchTerm);
   const filteredItems = items.filter((item) => {
     const matchesSearch = !normalizedSearch || item.searchText.includes(normalizedSearch);
     const matchesProject = projectFilter === 'all' || item.project === projectFilter;
-    const matchesAssignee = assigneeFilter === 'all' || item.assignee === assigneeFilter;
+    const matchesAssignee =
+      assigneeFilter === 'all' || assigneeTextMatches(item.assignee, new Set([normalizeText(assigneeFilter)]));
     const matchesStatus = matchesStatusFilter(item.candidate, statusFilter);
     return matchesSearch && matchesProject && matchesAssignee && matchesStatus;
   });
@@ -280,6 +293,7 @@ export function GridView({ rows, masterWorkbook, plannerProjectName, plannerFile
       const blob = await applyMasterChanges(masterWorkbook, selectedReadyCandidates);
       downloadBlob(blob, createDownloadName());
       setAppliedVersion((version) => version + 1);
+      onMasterUpdated?.();
       setSelectedIds(new Set());
       setApplySuccess(
         `Excel maestro actualizado generado con ${selectedReadyCandidates.length} cambio(s) validado(s).`,
@@ -295,7 +309,7 @@ export function GridView({ rows, masterWorkbook, plannerProjectName, plannerFile
     return (
       <EmptyState
         title="No hay datos de Planner para mostrar en Grid"
-        description="Carga al menos el Excel de Semana actual. Si también cargas la Semana anterior, la Grid mostrará los cambios semanales junto con la validación del Excel maestro."
+        description="Carga el Excel de Planner actual y el Excel maestro para revisar coincidencias, cambios y filas bloqueadas."
       />
     );
   }
@@ -391,7 +405,7 @@ export function GridView({ rows, masterWorkbook, plannerProjectName, plannerFile
             disabled={isApplying || selectedReadyCandidates.length === 0 || validation.status !== 'valid'}
             onClick={() => void handleApplyChanges()}
           >
-            {isApplying ? 'Generando...' : 'Generar Excel maestro actualizado'}
+            {isApplying ? 'Creando copia...' : 'Crea Excel Maestro Actualizado'}
           </button>
         </div>
       </div>

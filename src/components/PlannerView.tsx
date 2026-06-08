@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { ComparedRow } from '../types/comparison';
+import { assigneeTextMatches, splitAssignees } from '../utils/assignees';
 import { formatDateForSpain } from '../utils/dateUtils';
 import {
   getDueDate,
@@ -8,6 +9,7 @@ import {
   inferRowHierarchy,
   isStructuralRow,
 } from '../utils/plannerData';
+import { normalizeText } from '../utils/normalizeText';
 import { EventDetailModal } from './EventDetailModal';
 
 interface PlannerViewProps {
@@ -67,7 +69,7 @@ const demoItems: PlannerItem[] = [
   {
     id: 'demo-3',
     title: 'Aprobacion memoria tecnica',
-    description: 'Fecha adelantada respecto a la planificacion anterior.',
+    description: 'Fecha adelantada respecto a la planificación del maestro.',
     assignee: 'Carla Ruiz',
     project: 'Proyecto Demo Sur',
     bucket: 'Revision y aprobacion',
@@ -174,19 +176,19 @@ function labelsForRow(row: ComparedRow, dueTone: DueTone): PlannerLabel[] {
 
 function descriptionForRow(row: ComparedRow, dueTone: DueTone): string | undefined {
   if (dueTone === 'late') {
-    return 'Fecha de vencimiento desplazada mas tarde respecto al archivo anterior.';
+    return 'Fecha de vencimiento desplazada más tarde respecto al Excel maestro.';
   }
 
   if (dueTone === 'early') {
-    return 'Fecha de vencimiento adelantada respecto al archivo anterior.';
+    return 'Fecha de vencimiento adelantada respecto al Excel maestro.';
   }
 
   if (row.changedFields.length > 0) {
-    return 'Fecha modificada respecto al archivo anterior.';
+    return 'Fecha modificada respecto al Excel maestro.';
   }
 
   if (row.status === 'unmatched') {
-    return 'Sin coincidencia clara en la semana anterior.';
+    return 'Sin coincidencia clara en el Excel maestro.';
   }
 
   return undefined;
@@ -248,7 +250,7 @@ export function PlannerView({ rows }: PlannerViewProps) {
   const [selectedItem, setSelectedItem] = useState<PlannerItem | null>(null);
 
   const assignees = useMemo(
-    () => uniqueSorted(sourceItems.map((item) => item.assignee)),
+    () => uniqueSorted(sourceItems.flatMap((item) => splitAssignees(item.assignee).map((person) => person.label))),
     [sourceItems],
   );
   const projects = useMemo(
@@ -257,7 +259,8 @@ export function PlannerView({ rows }: PlannerViewProps) {
   );
 
   const filteredItems = sourceItems.filter((item) => {
-    const matchesAssignee = assigneeFilter === 'all' || item.assignee === assigneeFilter;
+    const matchesAssignee =
+      assigneeFilter === 'all' || assigneeTextMatches(item.assignee, new Set([normalizeText(assigneeFilter)]));
     const matchesProject = projectFilter === 'all' || item.project === projectFilter;
     return matchesAssignee && matchesProject;
   });

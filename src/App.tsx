@@ -1,20 +1,23 @@
 import { useMemo, useState } from 'react';
 import { CalendarView } from './components/CalendarView';
 import { ComparisonTable } from './components/ComparisonTable';
-import { EmptyState } from './components/EmptyState';
+import { CreateMasterModal } from './components/CreateMasterModal';
 import { ErrorAlert } from './components/ErrorAlert';
-import { FileUploadCard } from './components/FileUploadCard';
+import { FileChangeModal } from './components/FileChangeModal';
+import { FileStatusBar } from './components/FileStatusBar';
 import { FiltersPanel } from './components/FiltersPanel';
 import { GridView } from './components/GridView';
 import { Header } from './components/Header';
+import { MasterView } from './components/MasterView';
 import { PlannerView } from './components/PlannerView';
 import { SummaryBar } from './components/SummaryBar';
 import { Tabs, type TabKey } from './components/Tabs';
-import { useExcelComparison } from './hooks/useExcelComparison';
 import { useFilteredRows, useFilterOptions } from './hooks/useFilteredRows';
 import { useMasterWorkbook } from './hooks/useMasterWorkbook';
-import type { ActiveFilters, ComparedRow } from './types/comparison';
-import type { ParsedRow } from './types/excel';
+import { usePlannerWorkbook } from './hooks/usePlannerWorkbook';
+import { applyMasterChanges, buildMasterChangeCandidates, validateMasterProject } from './services/masterExcel';
+import { rowsFromMasterCandidates, rowsFromPlannerSheet } from './services/masterComparisonView';
+import type { ActiveFilters } from './types/comparison';
 
 const initialFilters: ActiveFilters = {
   names: [],
@@ -22,144 +25,255 @@ const initialFilters: ActiveFilters = {
   status: 'all',
 };
 
-function comparedRowsFromCurrentRows(rows: ParsedRow[]): ComparedRow[] {
-  return rows.map((row) => ({
-    currentRow: row,
-    previousRow: null,
-    status: 'unmatched',
-    changedFields: [],
-    changes: [],
-    isAmbiguous: false,
-    suggestedMatches: [],
-  }));
+function createDownloadName(): string {
+  const today = new Date().toISOString().slice(0, 10);
+  return `Excel_Maestro_actualizado_${today}.xlsx`;
+}
+
+function downloadBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 function App() {
-  const comparison = useExcelComparison();
+  const planner = usePlannerWorkbook();
   const master = useMasterWorkbook();
   const [filters, setFilters] = useState<ActiveFilters>(initialFilters);
-  const [activeTab, setActiveTab] = useState<TabKey>('comparison');
-  const { nameOptions, assigneeOptions } = useFilterOptions(comparison.comparedRows);
-  const filteredRows = useFilteredRows(comparison.comparedRows, filters);
-  const currentColumns = comparison.current.parsedSheet?.columns.visibleColumns ?? [];
-  const hasAnyError = Boolean(comparison.previous.error || comparison.current.error || master.error);
-  const gridRows = useMemo(() => {
-    if (comparison.isReady) {
-      return comparison.comparedRows;
+  const [activeTab, setActiveTab] = useState<TabKey>('excel');
+  const [isFileModalOpen, setIsFileModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [lastLoadAt, setLastLoadAt] = useState<Date | null>(null);
+  const [masterVersion, setMasterVersion] = useState(0);
+  const [isCreatingMaster, setIsCreatingMaster] = useState(false);
+  const [workspaceMessage, setWorkspaceMessage] = useState<string | null>(null);
+
+  const plannerRows = useMemo(() => rowsFromPlannerSheet(planner.parsedSheet), [planner.parsedSheet]);
+  const plannerProjectName = planner.parsedSheet?.projectName ?? '';
+  const validation = useMemo(
+    () => validateMasterProject(master.workbook, plannerProjectName),
+    [master.workbook, masterVersion, plannerProjectName],
+  );
+  const masterCandidates = useMemo(
+    () => buildMasterChangeCandidates(master.workbook, plannerRows, plannerProjectName),
+    [master.workbook, masterVersion, plannerProjectName, plannerRows],
+  );
+  const displayRows = useMemo(
+    () => (master.workbook ? rowsFromMasterCandidates(masterCandidates) : plannerRows),
+    [master.workbook, masterCandidates, plannerRows],
+  );
+  const { nameOptions, assigneeOptions } = useFilterOptions(displayRows);
+  const filteredRows = useFilteredRows(displayRows, filters);
+  const currentColumns = planner.parsedSheet?.columns.visibleColumns ?? [];
+  const readyCandidates = masterCandidates.filter((candidate) => candidate.status === 'ready');
+  const unmatchedCount = masterCandidates.filter((candidate) => candidate.status === 'not_found').length;
+  const ambiguousCount = masterCandidates.filter((candidate) => candidate.status === 'ambiguous').length;
+  const canStartMasterFlow = planner.isReady && master.isReady;
+  const canCreateMasterCopy = validation.status === 'valid' && readyCandidates.length > 0;
+  const hasAnyError = Boolean(planner.error || master.error);
+
+  const handlePlannerFileSelected = async (file: File): Promise<void> => {
+    await planner.loadPlannerFile(file);
+    setLastLoadAt(new Date());
+    setFilters(initialFilters);
+    setWorkspaceMessage(null);
+  };
+
+  const handleMasterFileSelected = async (file: File): Promise<void> => {
+    await master.loadMasterFile(file);
+    setLastLoadAt(new Date());
+    setMasterVersion((version) => version + 1);
+    setWorkspaceMessage(null);
+  };
+
+  const handleLoadDemoData = (): void => {
+    planner.loadDemoData();
+    setLastLoadAt(new Date());
+    setFilters(initialFilters);
+    setWorkspaceMessage('Datos de ejemplo cargados para el Excel de Planner actual.');
+  };
+
+  const handleCreateMasterCopy = async (): Promise<void> => {
+    if (!master.workbook || !canCreateMasterCopy) {
+      return;
     }
 
-    return comparison.current.parsedSheet
-      ? comparedRowsFromCurrentRows(comparison.current.parsedSheet.rows)
-      : [];
-  }, [comparison.comparedRows, comparison.current.parsedSheet, comparison.isReady]);
-  const missingText = !comparison.previous.parsedSheet
-    ? 'Falta cargar y validar la semana anterior.'
-    : 'Falta cargar y validar la semana actual.';
+    setIsCreatingMaster(true);
+    try {
+      const blob = await applyMasterChanges(master.workbook, readyCandidates);
+      downloadBlob(blob, createDownloadName());
+      setMasterVersion((version) => version + 1);
+      setWorkspaceMessage(`Copia actualizada creada con ${readyCandidates.length} cambio(s) validado(s).`);
+      setIsCreateModalOpen(false);
+    } catch {
+      setWorkspaceMessage('No se ha podido crear el Excel maestro actualizado.');
+    } finally {
+      setIsCreatingMaster(false);
+    }
+  };
+
+  const renderEmptyStart = () => (
+    <section className="empty-state workspace-empty">
+      <h2>Carga tus archivos para empezar</h2>
+      <p>Sube el Excel exportado de Planner y el Excel maestro para revisar cambios y crear una copia actualizada.</p>
+      <div className="empty-actions">
+        <button className="primary-button" type="button" onClick={() => setIsFileModalOpen(true)}>
+          Cargar archivos
+        </button>
+        <button className="secondary-button" type="button" onClick={handleLoadDemoData}>
+          Probar con datos de ejemplo
+        </button>
+      </div>
+    </section>
+  );
+
+  const renderExcelWorkspace = () => {
+    if (!planner.parsedSheet) {
+      return renderEmptyStart();
+    }
+
+    return (
+      <>
+        <FiltersPanel
+          filters={filters}
+          nameOptions={nameOptions}
+          assigneeOptions={assigneeOptions}
+          onFiltersChange={setFilters}
+          onClearFilters={() => setFilters(initialFilters)}
+        />
+        <section className="results-panel">
+          <SummaryBar
+            visibleCount={filteredRows.visibleCount}
+            changedCount={filteredRows.changedCount}
+            unmatchedCount={filteredRows.unmatchedCount}
+          />
+          <ComparisonTable rows={filteredRows.rows} columns={currentColumns} />
+        </section>
+      </>
+    );
+  };
+
+  const renderActiveView = () => {
+    if (activeTab === 'planner') {
+      return <PlannerView rows={displayRows} />;
+    }
+
+    if (activeTab === 'grid') {
+      return (
+        <GridView
+          rows={plannerRows}
+          masterWorkbook={master.workbook}
+          plannerProjectName={plannerProjectName}
+          plannerFileName={planner.fileName}
+          onMasterUpdated={() => setMasterVersion((version) => version + 1)}
+        />
+      );
+    }
+
+    if (activeTab === 'calendar') {
+      if (!planner.parsedSheet) {
+        return renderEmptyStart();
+      }
+
+      return (
+        <>
+          <FiltersPanel
+            filters={filters}
+            nameOptions={nameOptions}
+            assigneeOptions={assigneeOptions}
+            onFiltersChange={setFilters}
+            onClearFilters={() => setFilters(initialFilters)}
+          />
+          <CalendarView rows={filteredRows.rows} />
+        </>
+      );
+    }
+
+    if (activeTab === 'master') {
+      return (
+        <MasterView
+          candidates={masterCandidates}
+          validation={validation}
+          plannerFileName={planner.fileName}
+          masterFileName={master.fileName}
+          onCreateMaster={() => setIsCreateModalOpen(true)}
+          canCreateMaster={canStartMasterFlow}
+        />
+      );
+    }
+
+    return renderExcelWorkspace();
+  };
 
   return (
     <div className="app">
       <Header
-        onLoadDemoData={() => {
-          comparison.loadDemoData();
-          setFilters(initialFilters);
-        }}
+        canCreateMaster={canStartMasterFlow}
+        onCreateMaster={() => setIsCreateModalOpen(true)}
+        onLoadDemoData={handleLoadDemoData}
       />
 
       <main>
-        <section className="upload-grid" aria-label="Carga de archivos Excel">
-          <FileUploadCard
-            label="Semana anterior"
-            helperText="Sube el Excel exportado la semana pasada"
-            fileName={comparison.previous.fileName}
-            error={comparison.previous.error}
-            isReady={Boolean(comparison.previous.parsedSheet)}
-            onFileSelected={(file) => void comparison.loadFile('previous', file)}
-            onClearFile={() => comparison.clearFile('previous')}
-          />
-          <FileUploadCard
-            label="Semana actual"
-            helperText="Sube el Excel exportado esta semana"
-            fileName={comparison.current.fileName}
-            error={comparison.current.error}
-            isReady={Boolean(comparison.current.parsedSheet)}
-            onFileSelected={(file) => void comparison.loadFile('current', file)}
-            onClearFile={() => comparison.clearFile('current')}
-          />
-          <FileUploadCard
-            label="Excel maestro"
-            helperText="Carga el Excel principal que se actualizará"
-            fileName={master.fileName}
-            error={master.error}
-            isReady={master.isReady}
-            onFileSelected={(file) => void master.loadMasterFile(file)}
-            onClearFile={master.clearMasterFile}
-          />
-        </section>
+        <FileStatusBar
+          plannerFileName={planner.fileName}
+          plannerReady={planner.isReady}
+          masterFileName={master.fileName}
+          masterReady={master.isReady}
+          lastLoadAt={lastLoadAt}
+          onChangeFiles={() => setIsFileModalOpen(true)}
+        />
 
-        <section className="state-strip" aria-live="polite">
-          {(comparison.isProcessing || master.isProcessing) && (
+        {(planner.isProcessing || master.isProcessing) && (
+          <section className="state-strip" aria-live="polite">
             <span className="state-pill">Procesando archivos Excel</span>
-          )}
-          {!comparison.isProcessing && comparison.isReady && (
-            <span className="state-pill success">Archivos preparados para comparar</span>
-          )}
-          {!master.isProcessing && master.isReady && (
-            <span className="state-pill success">Excel maestro cargado</span>
-          )}
-          {!comparison.isProcessing && !comparison.isReady && !hasAnyError && (
-            <span className="state-pill muted">{missingText}</span>
-          )}
-        </section>
+          </section>
+        )}
+
+        {workspaceMessage && <p className="grid-message is-success">{workspaceMessage}</p>}
 
         {hasAnyError && (
           <div className="error-stack">
-            {comparison.previous.error && <ErrorAlert message={comparison.previous.error} />}
-            {comparison.current.error && <ErrorAlert message={comparison.current.error} />}
+            {planner.error && <ErrorAlert message={planner.error} />}
             {master.error && <ErrorAlert message={master.error} />}
           </div>
         )}
 
         <Tabs activeTab={activeTab} onTabChange={setActiveTab} />
-
-        {activeTab === 'planner' ? (
-          <PlannerView rows={comparison.isReady ? comparison.comparedRows : []} />
-        ) : activeTab === 'grid' ? (
-          <GridView
-            rows={gridRows}
-            masterWorkbook={master.workbook}
-            plannerProjectName={comparison.current.parsedSheet?.projectName ?? ''}
-            plannerFileName={comparison.current.fileName}
-          />
-        ) : comparison.isReady ? (
-          <>
-            <FiltersPanel
-              filters={filters}
-              nameOptions={nameOptions}
-              assigneeOptions={assigneeOptions}
-              onFiltersChange={setFilters}
-              onClearFilters={() => setFilters(initialFilters)}
-            />
-
-            {activeTab === 'comparison' ? (
-              <section className="results-panel">
-                <SummaryBar
-                  visibleCount={filteredRows.visibleCount}
-                  changedCount={filteredRows.changedCount}
-                  unmatchedCount={filteredRows.unmatchedCount}
-                />
-                <ComparisonTable rows={filteredRows.rows} columns={currentColumns} />
-              </section>
-            ) : (
-              <CalendarView rows={filteredRows.rows} />
-            )}
-          </>
-        ) : (
-          <EmptyState
-            title="Carga dos exportaciones de Planner"
-            description="Cuando ambos archivos sean válidos, se activarán los filtros, la comparación y el calendario. La vista Planner muestra datos de ejemplo mientras tanto."
-          />
-        )}
+        {renderActiveView()}
       </main>
+
+      <FileChangeModal
+        isOpen={isFileModalOpen}
+        plannerFileName={planner.fileName}
+        plannerReady={planner.isReady}
+        plannerError={planner.error}
+        masterFileName={master.fileName}
+        masterReady={master.isReady}
+        masterError={master.error}
+        onPlannerFileSelected={(file) => void handlePlannerFileSelected(file)}
+        onMasterFileSelected={(file) => void handleMasterFileSelected(file)}
+        onClose={() => setIsFileModalOpen(false)}
+      />
+
+      <CreateMasterModal
+        isOpen={isCreateModalOpen}
+        plannerFileName={planner.fileName}
+        masterFileName={master.fileName}
+        projectName={plannerProjectName}
+        changedCount={readyCandidates.length}
+        unmatchedCount={unmatchedCount}
+        ambiguousCount={ambiguousCount}
+        canCreate={canCreateMasterCopy}
+        isCreating={isCreatingMaster}
+        validationMessage={canStartMasterFlow ? validation.message : 'Carga el Excel de Planner actual y el Excel maestro.'}
+        onClose={() => setIsCreateModalOpen(false)}
+        onConfirm={() => void handleCreateMasterCopy()}
+      />
     </div>
   );
 }

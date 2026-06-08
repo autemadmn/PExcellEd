@@ -1,6 +1,6 @@
-# Comparador de fechas de Planner
+# Gestor de planificación Planner
 
-Aplicación web local para comparar exportaciones `.xlsx` de Planner, revisar cambios de fechas y generar una copia actualizada de un Excel maestro sin backend ni subida de archivos.
+Aplicación web local para trabajar con un Excel exportado de Planner y un Excel maestro. Permite revisar datos, filtrar tareas, validar el proyecto y crear una copia actualizada del Excel maestro sin backend ni subida de archivos.
 
 ## Instalación
 
@@ -24,11 +24,11 @@ npm run build
 
 ## Uso
 
-1. Sube el archivo de la `Semana anterior`.
-2. Sube el archivo de la `Semana actual`.
-3. Opcionalmente, carga el `Excel maestro` si quieres validar y preparar una actualización.
-4. Revisa los cambios semanales en `Comparación`, `Ver calendario` o `Planner`.
-5. En `Grid`, busca, filtra y selecciona filas. La app lee el proyecto desde la celda `B1` del Planner actual y lo valida contra el Excel maestro.
-6. Si el proyecto coincide y las filas tienen coincidencia segura, usa `Generar Excel maestro actualizado` para descargar una copia nueva del maestro.
+1. Carga el `Excel de Planner (actual)`.
+2. Carga el `Excel maestro`.
+3. Revisa la planificación en `Vista Excel`, `Planner`, `Grid`, `Calendario` o `Maestro`.
+4. Filtra por nombre, responsable individual y estado de fechas.
+5. Valida que el proyecto detectado desde Planner coincide con el Excel maestro.
+6. Usa `Crea Excel Maestro Actualizado` para descargar una copia nueva del maestro con los cambios validados.
 
 La aplicación nunca sobrescribe el archivo original del usuario. También puedes usar `Probar con datos de ejemplo` para validar la interfaz sin archivos reales.

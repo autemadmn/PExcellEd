@@ -7,7 +7,7 @@ interface StatusBadgeProps {
 const labels: Record<RowStatus, string> = {
   unchanged: 'Sin cambios',
   date_changed: 'Fecha modificada',
-  unmatched: 'Sin coincidencia anterior',
+  unmatched: 'Sin coincidencia en maestro',
   ambiguous: 'Coincidencia ambigua',
 };
 

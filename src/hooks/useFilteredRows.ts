@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { ActiveFilters, ComparedRow, FilteredRowsResult, FilterOption } from '../types/comparison';
+import { assigneeTextMatches, splitAssignees } from '../utils/assignees';
 
 function uniqueOptionsByNormalized(options: FilterOption[]): FilterOption[] {
   const seen = new Set<string>();
@@ -47,11 +48,13 @@ export function useFilterOptions(rows: ComparedRow[]): {
     );
 
     const assigneeOptions = uniqueOptionsByNormalized(
-      rows.map((row) => ({
-        value: row.currentRow.normalizedAssignee,
-        label: row.currentRow.assignee,
-        normalized: row.currentRow.normalizedAssignee,
-      })),
+      rows.flatMap((row) =>
+        splitAssignees(row.currentRow.assignee).map((person) => ({
+          value: person.normalized,
+          label: person.label,
+          normalized: person.normalized,
+        })),
+      ),
     );
 
     return { nameOptions, assigneeOptions };
@@ -66,8 +69,7 @@ export function useFilteredRows(rows: ComparedRow[], filters: ActiveFilters): Fi
     const filteredRows = rows.filter((row) => {
       const matchesName =
         selectedNames.size === 0 || selectedNames.has(row.currentRow.normalizedTaskName);
-      const matchesAssignee =
-        selectedAssignees.size === 0 || selectedAssignees.has(row.currentRow.normalizedAssignee);
+      const matchesAssignee = assigneeTextMatches(row.currentRow.assignee, selectedAssignees);
 
       return matchesName && matchesAssignee && matchesStatus(row, filters.status);
     });

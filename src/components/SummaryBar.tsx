@@ -7,11 +7,15 @@ interface SummaryBarProps {
 export function SummaryBar({ visibleCount, changedCount, unmatchedCount }: SummaryBarProps) {
   return (
     <div className="summary-bar" aria-live="polite">
-      <strong>{visibleCount}</strong> filas mostradas
-      <span aria-hidden="true">|</span>
-      <strong>{changedCount}</strong> con fechas modificadas
-      <span aria-hidden="true">|</span>
-      <strong>{unmatchedCount}</strong> sin coincidencia anterior
+      <span className="summary-item summary-visible">
+        <strong>{visibleCount}</strong> filas mostradas
+      </span>
+      <span className="summary-item summary-changed">
+        <strong>{changedCount}</strong> con fechas modificadas
+      </span>
+      <span className="summary-item summary-unmatched">
+        <strong>{unmatchedCount}</strong> sin coincidencia en maestro
+      </span>
     </div>
   );
 }

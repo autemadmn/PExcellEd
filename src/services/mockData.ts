@@ -94,71 +94,13 @@ function makeRow(input: MockRowInput): ParsedRow {
   };
 }
 
-const previousRows = [
-  makeRow({ rowNumber: 10, name: 'Proyecto Alpha', isBold: true, completed: '42%' }),
-  makeRow({ rowNumber: 11, name: 'Etapa 1 - Descubrimiento', isBold: true, indentationLevel: 1, completed: '65%' }),
-  makeRow({
-    rowNumber: 12,
-    name: 'Entrevista kickoff',
-    assignee: 'Ana López',
-    startDate: '2025-04-02',
-    endDate: '2025-04-04',
-    duration: '3 días',
-    completed: '100%',
-    indentationLevel: 2,
-  }),
-  makeRow({
-    rowNumber: 13,
-    name: 'Entrevista usuarios',
-    assignee: 'Ana López',
-    startDate: '2025-04-08',
-    endDate: '2025-04-11',
-    duration: '4 días',
-    dependsOn: '12',
-    completed: '80%',
-    indentationLevel: 2,
-  }),
-  makeRow({ rowNumber: 14, name: 'Etapa 2 - Diseño', isBold: true, indentationLevel: 1, completed: '20%' }),
-  makeRow({
-    rowNumber: 15,
-    name: 'Wireframes iniciales',
-    assignee: 'Bruno Martín',
-    startDate: '2025-04-07',
-    endDate: '2025-04-18',
-    duration: '10 días',
-    completed: '35%',
-    indentationLevel: 2,
-  }),
-  makeRow({
-    rowNumber: 16,
-    name: 'Validación interna',
-    assignee: 'Ana López',
-    startDate: '2025-04-21',
-    endDate: '2025-04-22',
-    duration: '2 días',
-    completed: '0%',
-    indentationLevel: 2,
-  }),
-  makeRow({
-    rowNumber: 17,
-    name: 'Validación interna',
-    assignee: 'Ana López',
-    startDate: '2025-04-24',
-    endDate: '2025-04-25',
-    duration: '2 días',
-    completed: '0%',
-    indentationLevel: 2,
-  }),
-  makeRow({ rowNumber: 18, name: 'Cliente Beta', isBold: true, completed: '15%' }),
-];
-
 const currentRows = [
   makeRow({ rowNumber: 10, name: 'Proyecto Alpha', isBold: true, completed: '45%' }),
   makeRow({ rowNumber: 11, name: 'Etapa 1 - Descubrimiento', isBold: true, indentationLevel: 1, completed: '70%' }),
   makeRow({
     rowNumber: 12,
     name: 'Entrevista kickoff',
-    assignee: 'Ana López',
+    assignee: 'Ana López, Lucrecia Castañas Correa',
     startDate: '2025-04-02',
     endDate: '2025-04-05',
     duration: '4 días',
@@ -168,7 +110,7 @@ const currentRows = [
   makeRow({
     rowNumber: 13,
     name: 'Entrevista usuarios',
-    assignee: 'Ana López',
+    assignee: 'Álvaro Sarabia García',
     startDate: '2025-04-08',
     endDate: '2025-04-11',
     duration: '4 días',
@@ -180,7 +122,7 @@ const currentRows = [
   makeRow({
     rowNumber: 15,
     name: 'Wireframes iniciales',
-    assignee: 'Bruno Martín',
+    assignee: 'Carlos Lluch, Christian Alexander Jacho Yugcha',
     startDate: '2025-04-10',
     endDate: '2025-04-18',
     duration: '7 días',
@@ -220,21 +162,12 @@ const currentRows = [
   makeRow({ rowNumber: 19, name: 'Cliente Beta', isBold: true, completed: '20%' }),
 ];
 
-export function createMockSheets(): { previous: ParsedPlannerSheet; current: ParsedPlannerSheet } {
+export function createMockPlannerSheet(): ParsedPlannerSheet {
   return {
-    previous: {
-      fileName: 'planner-semana-anterior-demo.xlsx',
-      sheetName: 'Planificación',
-      projectName: 'Proyecto Alpha',
-      columns: headers,
-      rows: previousRows,
-    },
-    current: {
-      fileName: 'planner-semana-actual-demo.xlsx',
-      sheetName: 'Planificación',
-      projectName: 'Proyecto Alpha',
-      columns: headers,
-      rows: currentRows,
-    },
+    fileName: 'planner-actual-demo.xlsx',
+    sheetName: 'Planificación',
+    projectName: 'Proyecto Alpha',
+    columns: headers,
+    rows: currentRows,
   };
 }

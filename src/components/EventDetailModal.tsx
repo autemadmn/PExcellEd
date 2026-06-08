@@ -80,14 +80,14 @@ export function EventDetailModal({ row, project, dueDate, onClose }: EventDetail
 
         {row.status === 'unmatched' && (
           <section className="change-detail subtle">
-            <h3>Sin coincidencia en semana anterior</h3>
+            <h3>Sin coincidencia en maestro</h3>
             {row.suggestedMatches.length > 0 ? (
               <p>
                 Posible coincidencia no aplicada automáticamente:{' '}
                 {row.suggestedMatches.map((match) => match.taskName.trim()).join(', ')}
               </p>
             ) : (
-              <p>No se ha encontrado una fila anterior con la misma clave de nombre y responsable.</p>
+              <p>No se ha encontrado una fila del maestro con la misma clave de nombre y responsable.</p>
             )}
           </section>
         )}

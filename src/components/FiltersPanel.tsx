@@ -13,7 +13,7 @@ const statusOptions: Array<{ value: ChangeStatusFilter; label: string }> = [
   { value: 'all', label: 'Todas las tareas' },
   { value: 'changed', label: 'Solo tareas con fechas modificadas' },
   { value: 'unchanged', label: 'Solo tareas sin cambios de fecha' },
-  { value: 'unmatched', label: 'Sin coincidencia en semana anterior' },
+  { value: 'unmatched', label: 'Sin coincidencia en maestro' },
 ];
 
 export function FiltersPanel({
@@ -27,17 +27,17 @@ export function FiltersPanel({
     filters.names.length > 0 || filters.assignees.length > 0 || filters.status !== 'all';
 
   return (
-    <section className="filters-panel" aria-label="Filtros de comparación">
+    <section className="filters-panel" aria-label="Filtros de planificación">
       <MultiSelectFilter
         label="Nombre"
-        placeholder="Buscar y seleccionar nombres"
+        placeholder="Buscar nombre o tarea..."
         options={nameOptions}
         value={filters.names}
         onChange={(names) => onFiltersChange({ ...filters, names })}
       />
       <MultiSelectFilter
         label="Asignado a"
-        placeholder="Buscar responsables"
+        placeholder="Todos los responsables"
         options={assigneeOptions}
         value={filters.assignees}
         onChange={(assignees) => onFiltersChange({ ...filters, assignees })}
